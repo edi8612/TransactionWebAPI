@@ -34,16 +34,14 @@ builder.Services.AddCors(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.Name = "TransactionAuth";         // optional rename
+    options.Cookie.Name = "TransactionAuth";         
     options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.None;     // needed for cross-site (frontend on 5173)
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // requires HTTPS
-    options.LoginPath = "/api/auth/login";           // not used for APIs, but okay
+    options.Cookie.SameSite = SameSiteMode.None;    
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
+    options.LoginPath = "/api/auth/login";           
     options.LogoutPath = "/api/auth/logout";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
-
-    // Optional: prevent 302 HTML redirects for API calls; return 401/403 instead
     options.Events = new CookieAuthenticationEvents
     {
         OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; },

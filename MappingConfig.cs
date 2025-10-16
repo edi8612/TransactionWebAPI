@@ -15,11 +15,13 @@ namespace TransactionWebAPI
             CreateMap<Category,CategoryDTO>().ReverseMap();
             CreateMap<Category, CategoryCreateDTO>().ReverseMap();
             CreateMap<Category, CategoryUpdateDTO>().ReverseMap();
-            //CreateMap<CategoryDTO, CategoryCreateDTO>().ReverseMap();
-            //CreateMap<CategoryDTO, CategoryUpdateDTO>().ReverseMap();
-
+          
             // Transaction
-            CreateMap<Transaction, TransactionDTO>().ReverseMap();
+            CreateMap<Transaction, TransactionDTO>()
+                .ForMember(dest => dest.Date, opt =>
+                     opt.MapFrom(src =>
+                        src.UpdatedAt > src.CreatedAt ? src.UpdatedAt : src.CreatedAt)).ReverseMap();
+
             CreateMap<Transaction, TransactionCreateDTO>().ReverseMap();
             CreateMap<Transaction, TransactionUpdateDTO>().ReverseMap();
 
