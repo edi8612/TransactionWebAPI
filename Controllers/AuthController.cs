@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TransactionWebAPI.Models;
@@ -19,6 +20,43 @@ namespace TransactionWebAPI.Controllers
             _signInManager = signInManager;
         }
 
+        //[Authorize]
+        [HttpGet("status")]
+        public IActionResult GetAuthStatus()
+        {
+
+            var isAuthed = User?.Identity?.IsAuthenticated == true;
+            if (isAuthed)
+                return Ok(new { authenticated = true, user = User.Identity!.Name });
+
+            return Unauthorized(new { authenticated = false });
+        }
+
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginDTO dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return Unauthorized(new { message = "Invalid credentials." });
+
+            var result = await _signInManager.PasswordSignInAsync(
+                user.UserName, dto.Password, isPersistent: true, lockoutOnFailure: false);
+
+            if (result.Succeeded)
+                return Ok(new { message = "Login successful." });
+
+            if (result.IsNotAllowed)
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Not allowed to sign in." });
+
+            if (result.IsLockedOut)
+                return StatusCode(423, new { message = "Account locked." });
+
+            return Unauthorized(new { message = "Invalid credentials." });
+        }
+
+
+
         [HttpPost("signup")]
         public async Task<IActionResult> Signup(SignupDTO dto)
         {
@@ -26,21 +64,24 @@ namespace TransactionWebAPI.Controllers
             var result = await _userManager.CreateAsync(user, dto.Password);
 
             if (result.Succeeded)
-                return Ok("Registration successful.");
+            {
+                
+                await _signInManager.SignInAsync(user, isPersistent: true);
+                return Ok(new { message = "Registration successful." });
+            }
 
-            return BadRequest(result.Errors);
+            var errors = result.Errors?.Select(e => e.Description).ToList() ?? new();
+            var isDuplicate = result.Errors?.Any(e =>
+                e.Code.Contains("Duplicate", StringComparison.OrdinalIgnoreCase)) == true;
+
+            if (isDuplicate)
+                return Conflict(new { message = "Email already exists.", errors });
+
+            return BadRequest(new { message = "Registration failed.", errors });
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDTO dto)
-        {
-            var result = await _signInManager.PasswordSignInAsync(dto.Email, dto.Password, true, false);
-
-            if (result.Succeeded)
-                return Ok("Login successful.");
-
-            return Unauthorized("Invalid credentials.");
-        }
+        
+        
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()

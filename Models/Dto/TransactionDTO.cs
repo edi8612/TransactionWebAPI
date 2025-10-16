@@ -15,6 +15,8 @@ namespace TransactionWebAPI.Models.Dto
         public string Title { get; set; }
         public decimal Value { get; set; }
 
+        public DateTime Date { get; set; }
+
       
     }
 }

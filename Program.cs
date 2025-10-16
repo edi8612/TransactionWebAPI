@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TransactionWebAPI;
@@ -22,24 +23,47 @@ builder.Services.AddScoped<ICategoryService,CategoryService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.Name = "MyAuthCookie";
-    options.LoginPath = "/api/auth/login";
-    options.AccessDeniedPath = "/api/auth/denied";
-    options.ExpireTimeSpan = TimeSpan.FromDays(7);
-    options.SlidingExpiration = true;
+    options.Cookie.Name = "TransactionAuth";         // optional rename
     options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Strict; // Adjust for cross-site if needed
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Use Always for HTTPS
+    options.Cookie.SameSite = SameSiteMode.None;     // needed for cross-site (frontend on 5173)
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // requires HTTPS
+    options.LoginPath = "/api/auth/login";           // not used for APIs, but okay
+    options.LogoutPath = "/api/auth/logout";
+    options.SlidingExpiration = true;
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+
+    // Optional: prevent 302 HTML redirects for API calls; return 401/403 instead
+    options.Events = new CookieAuthenticationEvents
+    {
+        OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; },
+        OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; }
+    };
 });
+builder.Services.Configure<IdentityOptions>(o =>
+{
+    o.Password.RequiredLength = 6;
+    o.Password.RequireDigit = false;
+    o.Password.RequireUppercase = false;
+    o.Password.RequireLowercase = false;
+    o.Password.RequireNonAlphanumeric = false;
+    o.User.RequireUniqueEmail = true;
+});
+
+
+builder.Services.AddAuthorization();
+
+
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 
@@ -52,7 +76,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
