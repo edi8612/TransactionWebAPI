@@ -14,40 +14,48 @@ namespace TransactionWebAPI.Controllers
         public TransactionController(ITransactionService transactionService)
         {
             _transactionService = transactionService;
-
         }
 
-
         [HttpGet(Name = "GetTransactions")]
-
         public async Task<ActionResult<IEnumerable<TransactionDTO>>> GetTransactions()
         {
-            var transactions = await _transactionService.GetAllAsync();
-
-            if (transactions == null)
+            try
             {
-                return NotFound();
+                var transactions = await _transactionService.GetAllAsync();
+                if (transactions == null)
+                    return NotFound(new { message = "No transactions found." });
+
+                return Ok(transactions);
             }
-
-            return Ok(transactions);
-
-
-
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+            }
         }
 
         [HttpGet("{id}", Name = "GetTransaction")]
         public async Task<ActionResult<TransactionDTO>> GetTransaction(int id)
         {
-            var transaction = await _transactionService.GetAsync(id);
-            if (transaction == null)
+            try
             {
-                return NotFound();
+                var transaction = await _transactionService.GetAsync(id);
+                if (transaction == null)
+                    return NotFound(new { message = $"Transaction with ID {id} not found." });
+
+                return Ok(transaction);
             }
-
-
-            return Ok(transaction);
-
-
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+            }
         }
 
         [Authorize]
@@ -56,18 +64,23 @@ namespace TransactionWebAPI.Controllers
         {
             try
             {
-
-
                 var transactionCreate = await _transactionService.CreateAsync(dto);
                 return CreatedAtRoute(
                     "GetTransaction",
                     new { id = transactionCreate.Id },
                     transactionCreate);
-
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
 
@@ -81,15 +94,21 @@ namespace TransactionWebAPI.Controllers
                 var transactionUpdated = await _transactionService.UpdateAsync(dto);
 
                 if (transactionUpdated == null)
-                {
-                    return NotFound();
-                }
+                    return NotFound(new { message = $"Transaction with ID {id} not found." });
 
                 return Ok(transactionUpdated);
             }
             catch (KeyNotFoundException)
             {
-                return NotFound();
+                return NotFound(new { message = $"Transaction with ID {id} not found." });
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
 
@@ -104,9 +123,16 @@ namespace TransactionWebAPI.Controllers
             }
             catch (KeyNotFoundException)
             {
-                return NotFound();
+                return NotFound(new { message = $"Transaction with ID {id} not found." });
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
-
     }
 }
